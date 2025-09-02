@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
@@ -114,12 +116,14 @@ func main() {
 	// .envファイルから環境変数をロード
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+		if !errors.Is(err, fs.ErrNotExist) {
+			log.Fatalf("Error loading .env file: %v", err)
+		}
 	}
 
 	token := os.Getenv("TOKEN")
 	if token == "" {
-		log.Fatal("TOKEN not found in .env file")
+		log.Fatal("TOKEN not found in Environment Variables")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -297,8 +301,8 @@ func handleMessageCreate(ctx context.Context, d MessageData) error {
 
 	explodeChannelID := os.Getenv("EXPLODE_CHANNEL_ID")
 	if explodeChannelID == "" {
-		log.Fatal("EXPLODE_CHANNEL_ID not found in .env file")
-		return fmt.Errorf("EXPLODE_CHANNEL_ID not found in .env file")
+		log.Fatal("EXPLODE_CHANNEL_ID not found in Environment Variables")
+		return fmt.Errorf("EXPLODE_CHANNEL_ID not found in Environment Variables")
 	}
 
 	// 指定されたチャンネルからの投稿かチェック
