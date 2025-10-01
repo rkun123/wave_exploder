@@ -72,6 +72,12 @@ func (h HandlerImpl) MessageCreate(s *discordgo.Session, m *discordgo.MessageCre
 			return err
 		}
 
+		// as Reply
+		message.Reference = &discordgo.MessageReference{
+			MessageID: m.ID,
+			ChannelID: m.ChannelID,
+		}
+
 		if _, err := s.ChannelMessageSendComplex(m.ChannelID, message); err != nil {
 			log.Println(m.ChannelID)
 			log.Printf("Failed to send message: %v", err)
@@ -84,7 +90,7 @@ func (h HandlerImpl) MessageCreate(s *discordgo.Session, m *discordgo.MessageCre
 func formatSongLinkResponse(r *songlink.LinkResponse) (*discordgo.MessageSend, error) {
 	// ref: https://linktree.notion.site/API-d0ebe08a5e304a55928405eb682f6741
 
-	linkButtons := make([]discordgo.MessageComponent, 0, 0)
+	linkButtons := make([]discordgo.MessageComponent, 0, len(r.LinksByPlatform))
 
 	for platform, link := range r.LinksByPlatform {
 		switch platform {
