@@ -66,7 +66,13 @@ func (h HandlerImpl) MessageCreate(s *discordgo.Session, m *discordgo.MessageCre
 			return nil // 握りつぶす
 		}
 
-		if _, err := s.ChannelMessageSend(m.ChannelID, songLink.PageURL); err != nil {
+		message, err := formatSongLinkResponse(songLink)
+		if err != nil {
+			log.Printf("Failed to format message: %v", err)
+			return err
+		}
+
+		if _, err := s.ChannelMessageSendComplex(m.ChannelID, message); err != nil {
 			log.Println(m.ChannelID)
 			log.Printf("Failed to send message: %v", err)
 			return err
@@ -75,10 +81,10 @@ func (h HandlerImpl) MessageCreate(s *discordgo.Session, m *discordgo.MessageCre
 	return nil
 }
 
-func formatSongLinkResponse(r *songlink.LinkResponse) *discordgo.MessageSend {
+func formatSongLinkResponse(r *songlink.LinkResponse) (*discordgo.MessageSend, error) {
 	// ref: https://linktree.notion.site/API-d0ebe08a5e304a55928405eb682f6741
 
-	linkButtons := make([]discordgo.MessageComponent, 0, 5)
+	linkButtons := make([]discordgo.MessageComponent, 0, 0)
 
 	for platform, link := range r.LinksByPlatform {
 		switch platform {
@@ -126,12 +132,26 @@ func formatSongLinkResponse(r *songlink.LinkResponse) *discordgo.MessageSend {
 			})
 		}
 	}
-	return &discordgo.MessageSend{
-		Components: []discordgo.MessageComponent{
-			discordgo.ActionsRow{
-				Components: linkButtons,
-			},
-		},
+
+	if len(linkButtons) == 0 {
+		return nil, fmt.Errorf("no link found")
 	}
+
+	actionsRows := make([]discordgo.ActionsRow, (len(linkButtons)-1)/5+1)
+	for i, button := range linkButtons {
+		exists := actionsRows[i/5]
+		actionsRows[i/5] = discordgo.ActionsRow{
+			Components: append(exists.Components, button),
+		}
+	}
+
+	components := make([]discordgo.MessageComponent, len(actionsRows))
+	for i, row := range actionsRows {
+		components[i] = row
+	}
+
+	return &discordgo.MessageSend{
+		Components: components,
+	}, nil
 
 }
